@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+		<title>人口专题图</title>
+		<link rel="stylesheet" href="https://js.arcgis.com/4.11/esri/themes/light/main.css">
+		<script src="https://js.arcgis.com/4.11/"></script>
+		<style>
+			html,
+			body,
+			#viewDiv {
+				padding: 0;
+				margin: 0;
+				height: 100%;
+				width: 100%;
+			}
+		</style>
+		<script>
+			require([
+				"esri/Map",
+				"esri/views/MapView",
+				"esri/layers/GeoJSONLayer",
+				"esri/widgets/Legend"
+			], function(Map, MapView, GeoJSONLayer, Legend) {
+
+				const defaultSym = {
+					type: "simple-fill",
+					outline: {
+						color: [128, 128, 128, 0.2],
+						width: "0.5px"
+					}
+				};
+
+				const renderer = {
+					type: "simple", // autocasts as new SimpleRenderer()
+					symbol: defaultSym,
+					label: "population",
+					visualVariables: [{
+						type: "color",
+						field: "pop2010",
+						stops: [{
+								value: 552300,
+								color: "#f8aba6",
+								label: "552300"
+							},
+							{
+								value: 46026629,
+								color: "#FF1493",
+								label: "46026629"
+							},
+							{
+								value: 104303132,
+								color: "#FF4500",
+								label: "104303132"
+							}
+						]
+					}]
+				};
+
+				const geoJSONLayer = new GeoJSONLayer({
+					url: "https://zhangyuanan.github.io/zya20190123/zyaGeojson.geojson",
+					renderer: renderer
+				});
+
+				const map = new Map({
+					basemap: "osm",
+					layers: [geoJSONLayer]
+				});
+
+				var view = new MapView({
+					container: "viewDiv",
+					map: map,
+					center: [114.30, 30.60],
+					zoom: 4
+				});
+
+				view.ui.add(
+					new Legend({
+						view: view
+					}),
+					"top-right"
+				);
+			});
+		</script>
+	</head>
+
+	<body>
+		<div id="viewDiv"></div>
+	</body>
+
+</html>
