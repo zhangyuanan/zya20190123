@@ -58,9 +58,38 @@
 						]
 					}]
 				};
+				
+				var template = {
+					title: "{ENGLISH}省",
+					content: [{
+						type: "fields",
+						fieldInfos: [{
+								fieldName: "ENGLISH",
+								label: "省"
+							},
+							{
+								fieldName: "pop2000",
+								label: "pop2000",
+								format: {
+									digitSeparator: true,
+									places: 0
+								}
+							},
+							{
+								fieldName: "pop2010",
+								label: "pop2010",
+								format: {
+									digitSeparator: true,
+									places: 0
+								}
+							}
+						]
+					}]
+				};
 
 				const geoJSONLayer = new GeoJSONLayer({
 					url: "https://zhangyuanan.github.io/zya20190123/zyaGeojson.geojson",
+					popupTemplate: template,
 					renderer: renderer
 				});
 
