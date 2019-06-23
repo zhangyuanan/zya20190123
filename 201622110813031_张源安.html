@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+		<title>中国2018年非洲猪瘟状况</title>
+		<style>
+			html,
+			body,
+			#viewDiv {
+				padding: 0;
+				margin: 0;
+				height: 100%;
+				width: 100%;
+			}
+			
+			#style1 {
+				position: fixed ! important;
+				right: 20px;
+				top: 20px;
+				width: auto;
+				height: auto;
+				background-color: lightpink;
+			}
+		</style>
+
+		<link rel="stylesheet" href="https://js.arcgis.com/4.11/esri/themes/light/main.css" />
+		<script src="https://js.arcgis.com/4.11/"></script>
+
+		<script>
+			require(["esri/Map", "esri/views/MapView", "esri/layers/CSVLayer",
+					"esri/layers/GeoJSONLayer",
+					"esri/widgets/Legend",
+					"esri/geometry/geometryEngine",
+					"esri/Graphic"
+				],
+				function(Map, MapView, CSVLayer, GeoJSONLayer, Legend, geometryEngine, Graphic) {
+					var map = new Map({
+						basemap: "streets"
+					});
+
+					var view = new MapView({
+						container: "viewDiv",
+						map: map,
+						zoom: 4,
+						center: [108, 34] // longitude, latitude
+					});
+
+					var url = "https://zhangyuanan.github.io/zya20190123/African swine fever.csv";
+
+					var render = {
+						type: "simple", // autocasts as new SimpleRenderer()
+						symbol: {
+							type: "simple-marker", // autocasts as new SimpleMarkerSymbol()
+							outline: { // autocasts as new SimpleLineSymbol()
+								color: [0, 0, 0, 0.5],
+								width: "0.5px"
+							},
+							size: 8
+						},
+						label: "2018 China ASF",
+						visualVariables: [{
+							type: "color",
+							field: "time",
+							stops: [{
+									value: 20180606,
+									color: "blue"
+								},
+								{
+									value: 20181230,
+									color: "red"
+								}
+							]
+						}]
+					};
+
+					const heat = {
+						type: "heatmap",
+						colorStops: [{
+								color: "rgba(63, 40, 102, 0)",
+								ratio: 0
+							},
+							{
+								color: "#472b77",
+								ratio: 0.083
+							},
+							{
+								color: "#4e2d87",
+								ratio: 0.166
+							},
+							{
+								color: "#563098",
+								ratio: 0.249
+							},
+							{
+								color: "#5d32a8",
+								ratio: 0.332
+							},
+							{
+								color: "#6735be",
+								ratio: 0.415
+							},
+							{
+								color: "#7139d4",
+								ratio: 0.498
+							},
+							{
+								color: "#7b3ce9",
+								ratio: 0.581
+							},
+							{
+								color: "#853fff",
+								ratio: 0.664
+							},
+							{
+								color: "#a46fbf",
+								ratio: 0.747
+							},
+							{
+								color: "#c29f80",
+								ratio: 0.83
+							},
+							{
+								color: "#e0cf40",
+								ratio: 0.913
+							},
+							{
+								color: "#ffff00",
+								ratio: 1
+							}
+						],
+						maxPixelIntensity: 25,
+						minPixelIntensity: 0
+					};
+
+					var trailheadsLabels = {
+						symbol: {
+							type: "text",
+							color: "#FFFFFF",
+							haloColor: "#5E8D74",
+							haloSize: "2px",
+							font: {
+								size: "12px",
+								family: "noto-sans",
+								style: "italic",
+								weight: "normal"
+							}
+						},
+						labelPlacement: "above-center",
+						labelExpressionInfo: {
+							expression: "$feature.time"
+						}
+					};
+
+					var template = {
+						// autocasts as new PopupTemplate()
+						title: "Position：{ENAME}",
+						content: [{
+							type: "fields",
+							fieldInfos: [{
+									fieldName: "time",
+									label: "时间"
+								},
+								{
+									fieldName: "cunlan",
+									label: "存栏数"
+								},
+								{
+									fieldName: "fabing",
+									label: "发病数"
+								},
+								{
+									fieldName: "death",
+									label: "死亡数"
+								}
+							]
+						}]
+					};
+
+					var csvLayer = new CSVLayer({
+						url: url,
+						title: "2018年中国ASF分布状况",
+						latitudeField: "Lat",
+						longitudeField: "Long",
+						renderer: render,
+						popupTemplate: template,
+						labelingInfo: [trailheadsLabels]
+					});
+
+					//添加图例
+					view.ui.add(
+						new Legend({
+							view: view
+						}),
+						"bottom-left"
+					);
+
+					view
+						.when(function() {
+							return csvLayer.when(function() {
+								var query = csvLayer.createQuery();
+								return csvLayer.queryFeatures(query);
+							});
+						})
+						.then(queryForWellGeometries)
+						.then(createBuffer);
+
+					var distanceSlider = document.getElementById("distance");
+
+					var wellBuffer, wellsGeometries;
+
+					function queryForWellGeometries() {
+						var wellsQuery = csvLayer.createQuery();
+
+						return csvLayer.queryFeatures(wellsQuery).then(function(response) {
+							wellsGeometries = response.features.map(function(feature) {
+								return feature.geometry;
+							});
+
+							return wellsGeometries;
+						});
+					}
+
+					function createBuffer(wellPoints) {
+						var bufferDistance = parseInt(distanceSlider.value);
+						var wellBuffers = geometryEngine.geodesicBuffer(
+							wellPoints, [bufferDistance],
+							"meters",
+							true
+						);
+						wellBuffer = wellBuffers[0];
+
+						// add the buffer to the view as a graphic
+						var bufferGraphic = new Graphic({
+							geometry: wellBuffer,
+							symbol: {
+								type: "simple-fill", // autocasts as new SimpleFillSymbol()
+								outline: {
+									width: 1.5,
+									color: [255, 128, 0, 0.5]
+								},
+								style: "none"
+							}
+						});
+						view.graphics.removeAll();
+						view.graphics.add(bufferGraphic);
+					}
+
+					map.add(csvLayer);
+
+					document.getElementById("Thermograph").addEventListener("click", function() {
+						if(csvLayer.renderer.type == "simple") {
+							csvLayer.renderer = heat;
+						} else {
+							csvLayer.renderer = render;
+						}
+					});
+
+					//console.log(csvLayer.renderer);
+
+					var china = "https://zhangyuanan.github.io/zya20190123/zyaGeojson.geojson";
+					
+					const geojsonLayer = new GeoJSONLayer({
+						url: china
+					});
+                    
+                    var aa = true;
+					document.getElementById("china").addEventListener("click", function() {
+						if(aa == true){
+							aa = false;
+							map.add(geojsonLayer);
+						}else{
+							aa = true;
+							map.remove(geojsonLayer);
+						}
+					});
+
+					//监听缓冲区距离
+					distanceSlider.addEventListener("input", function() {
+						document.getElementById("distance-value").innerText =
+							distanceSlider.value;
+					});
+
+					//监听缓冲区改变事件
+					distanceSlider.addEventListener("change", function() {
+						createBuffer(wellsGeometries);
+					});
+
+					//显示比例尺，经纬度
+					var coordsWidget = document.createElement("div");
+					coordsWidget.id = "coordsWidget";
+					coordsWidget.className = "esri-widget esri-component";
+					coordsWidget.style.padding = "7px 15px 5px";
+
+					view.ui.add(coordsWidget, "bottom-right");
+
+					function showCoordinates(pt) {
+						var coords = "Lat/Lon " + pt.latitude.toFixed(3) + " " + pt.longitude.toFixed(3) +
+							" | Scale 1:" + Math.round(view.scale * 1) / 1 +
+							" | Zoom " + view.zoom;
+						coordsWidget.innerHTML = coords;
+					}
+
+					view.watch("stationary", function(isStationary) {
+						showCoordinates(view.center);
+					});
+
+					view.on("pointer-move", function(evt) {
+						showCoordinates(view.toMap({
+							x: evt.x,
+							y: evt.y
+						}));
+					});
+				});
+		</script>
+	</head>
+
+	<body>
+		<div id="viewDiv">
+			<div id="style1">缓冲区半径:
+				<input id="distance" type="range" min="10" max="150000" step="10" value="150000" />&nbsp; <span id="distance-value">150000</span> meters <br />
+				<input type="checkbox" id="Thermograph" />热力图
+				<input type="checkbox" id="china" />中国底图
+			</div>
+		</div>
+	</body>
+
+</html>
